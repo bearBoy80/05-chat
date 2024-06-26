@@ -9,7 +9,21 @@ use tracing::{info, warn};
 
 use crate::{AppError, AppState, ChatFile, CreateMessage, ListMessages};
 use chat_core::User;
+#[utoipa::path(
+    post,
+    path = "/api/chats/{id}/messages",
+    params(
+        ("id" = u64, Path, description = "Chat id"),
+    ),
+    responses(
+        (status = 200, description = "create message success",body =Message),
+        (status = 400, description = "Invalid input", body = ErrorOutput),
+    ),
+    security(
+        ("token" = [])
+    ),tag = "chat",
 
+)]
 pub(crate) async fn send_message_handler(
     Extension(user): Extension<User>,
     State(state): State<AppState>,
@@ -35,7 +49,7 @@ pub(crate) async fn send_message_handler(
     ),
     security(
         ("token" = [])
-    )
+    ),tag = "chat",
 )]
 pub(crate) async fn list_message_handler(
     State(state): State<AppState>,
@@ -45,7 +59,21 @@ pub(crate) async fn list_message_handler(
     let messages = state.list_messages(input, id).await?;
     Ok(Json(messages))
 }
-
+#[utoipa::path(
+    get,
+    path = "/api/files/{ws_id}/{path}",
+    params(
+        ("ws_id" = u64, Path, description = "ws id"),
+        ("path" = String, Path, description = "File path")
+    ),
+    responses(
+        (status = 200, description = "show file",content_type = "application/octet-stream", body=Vec<u8>),
+        (status = 400, description = "file not found", body = ErrorOutput),
+    ),
+    security(
+        ("token" = [])
+    ),tag = "chat",
+)]
 pub(crate) async fn file_handler(
     Extension(user): Extension<User>,
     State(state): State<AppState>,
@@ -70,6 +98,18 @@ pub(crate) async fn file_handler(
     Ok((headers, body))
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/upload",
+    request_body(content_type = "multipart/form-data", content = Vec<u8>),
+    responses(
+        (status = 200, description = "show file",content_type = "application/json",body =Vec<String>),
+        (status = 400, description = "file not found", body = ErrorOutput),
+    ),
+    security(
+        ("token" = [])
+    ),tag = "chat",
+)]
 pub(crate) async fn upload_handler(
     Extension(user): Extension<User>,
     State(state): State<AppState>,

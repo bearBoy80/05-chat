@@ -1,4 +1,4 @@
-use crate::{AppError, AppState, CreateChat};
+use crate::{AppError, AppState, CreateChat, UpdateChat};
 use axum::{
     extract::{Path, State},
     http::StatusCode,
@@ -15,7 +15,7 @@ use chat_core::User;
     ),
     security(
         ("token" = [])
-    )
+    ),tag = "chat"
 )]
 pub(crate) async fn list_chat_handler(
     Extension(user): Extension<User>,
@@ -33,7 +33,7 @@ pub(crate) async fn list_chat_handler(
     ),
     security(
         ("token" = [])
-    )
+    ),tag = "chat"
 )]
 pub(crate) async fn create_chat_handler(
     Extension(user): Extension<User>,
@@ -56,7 +56,7 @@ pub(crate) async fn create_chat_handler(
     ),
     security(
         ("token" = [])
-    )
+    ),tag = "chat"
 )]
 pub(crate) async fn get_chat_handler(
     State(state): State<AppState>,
@@ -68,13 +68,57 @@ pub(crate) async fn get_chat_handler(
         None => Err(AppError::NotFound(format!("chat id {id}"))),
     }
 }
-
-// TODO: finish this as a homework
-pub(crate) async fn update_chat_handler() -> impl IntoResponse {
-    "update chat"
+#[utoipa::path(
+    patch,
+    path = "/api/chats/{id}",
+    params(
+        ("id" = u64, Path, description = "Chat id")
+    ),
+    responses(
+        (status = 200, description = "Chat update success"),
+        (status = 404, description = "Chat not found", body = ErrorOutput),
+    ),
+    security(
+        ("token" = [])
+    ),
+    tag = "chat"
+)
+]
+pub(crate) async fn update_chat_handler(
+    State(state): State<AppState>,
+    Path(id): Path<u64>,
+    Json(input): Json<UpdateChat>,
+) -> Result<impl IntoResponse, AppError> {
+    let flag = state.update_chat_name(id, input).await?;
+    if flag {
+        Ok(StatusCode::OK)
+    } else {
+        Err(AppError::NotFound(format!("chat id {id}")))
+    }
 }
-
-// TODO: finish this as a homework
-pub(crate) async fn delete_chat_handler() -> impl IntoResponse {
-    "delete chat"
+#[utoipa::path(
+    delete,
+    path = "/api/chat/{id}",
+    params(
+        ("id" = u64, Path, description = "Chat id")
+    ),
+    responses(
+        (status = 200, description = "delete chat success"),
+        (status = 404, description = "Chat not found", body = ErrorOutput),
+    ),
+    security(
+        ("token" = [])
+    ),
+    tag = "chat",
+)]
+pub(crate) async fn delete_chat_handler(
+    State(state): State<AppState>,
+    Path(id): Path<u64>,
+) -> Result<impl IntoResponse, AppError> {
+    let flag = state.delete_chat_by_id(id).await?;
+    if flag {
+        Ok(StatusCode::OK)
+    } else {
+        Err(AppError::NotFound(format!("chat id {id}")))
+    }
 }

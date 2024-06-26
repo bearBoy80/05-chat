@@ -18,7 +18,7 @@ Content-Type: application/json
 {
     "workspace": "acme",
     "fullname": "Alice Chen",
-    "email": "alice@acme.org",
+    "email": "guid@acme.org",
     "password": "123456"
 }
 
@@ -39,7 +39,7 @@ POST http://localhost:6688/api/signin
 Content-Type: application/json
 
 {
-    "email": "tchen@acme.org",
+    "email": "alice@acme.org",
     "password": "123456"
 }
 
@@ -52,7 +52,7 @@ Authorization: Bearer {{token}}
 
 {
     "name": "acme",
-    "members": [1, 2],
+    "members": [1,2],
     "public": false
 }
 
@@ -60,6 +60,20 @@ Authorization: Bearer {{token}}
 ### get chat list
 
 GET http://localhost:6688/api/chats
+Authorization: Bearer {{token}}
+
+### update chat name
+
+PATCH http://localhost:6688/api/chats/1
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "name": "acme",
+    "members":[1]
+}
+### delete chat by id
+DELETE http://localhost:6688/api/chats/1
 Authorization: Bearer {{token}}
 
 ### get user list

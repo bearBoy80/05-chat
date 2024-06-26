@@ -1,6 +1,6 @@
 server:
   port: 6687
-  db_url: postgres://postgres:postgres@localhost:5432/chat
+  db_url: postgres://chat01:123456@localhost:5432/chat01
 auth:
   pk: |
     -----BEGIN PUBLIC KEY-----

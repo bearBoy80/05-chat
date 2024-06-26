@@ -1,6 +1,7 @@
 use crate::{AppError, AppState};
 use chat_core::{Chat, ChatType};
 use serde::{Deserialize, Serialize};
+use sqlx::{Postgres, QueryBuilder};
 use utoipa::ToSchema;
 
 #[derive(Debug, Clone, Default, ToSchema, Serialize, Deserialize)]
@@ -9,7 +10,12 @@ pub struct CreateChat {
     pub members: Vec<i64>,
     pub public: bool,
 }
-
+#[derive(Debug, Clone, Default, ToSchema, Serialize, Deserialize)]
+pub struct UpdateChat {
+    pub name: Option<String>,
+    pub members: Vec<i64>,
+    pub public: Option<bool>,
+}
 #[allow(dead_code)]
 impl AppState {
     pub async fn create_chat(&self, input: CreateChat, ws_id: u64) -> Result<Chat, AppError> {
@@ -106,6 +112,59 @@ impl AppState {
         .await?;
 
         Ok(is_member.is_some())
+    }
+    pub async fn update_chat_name(
+        &self,
+        chat_id: u64,
+        mut input: UpdateChat,
+    ) -> Result<bool, AppError> {
+        let chat = match self.get_chat_by_id(chat_id).await? {
+            Some(chat) => chat,
+            None => return Ok(false),
+        };
+        let mut sql_builder: QueryBuilder<Postgres> = QueryBuilder::new("update chats set ");
+        let mut separated = sql_builder.separated(", ");
+        if input.members.is_empty() {
+            input.members = chat.members;
+        } else {
+            separated
+                .push("members=")
+                .push_bind_unseparated(&input.members);
+        }
+        if input.public.is_some() {
+            let chat_type = match (&input.name, &input.members.len()) {
+                (None, 2) => ChatType::Single,
+                (None, _) => ChatType::Group,
+                (Some(_), _) => {
+                    if input.public.is_some() {
+                        ChatType::PublicChannel
+                    } else {
+                        ChatType::PrivateChannel
+                    }
+                }
+            };
+            separated.push("type=").push_bind_unseparated(chat_type);
+        }
+        separated.push("name=").push_bind_unseparated(input.name);
+        sql_builder.push(" where id =").push_bind(chat_id as i64);
+        let row_num = sql_builder
+            .build()
+            .execute(&self.pool)
+            .await?
+            .rows_affected();
+        Ok(row_num == 1)
+    }
+    pub async fn delete_chat_by_id(&self, chat_id: u64) -> Result<bool, AppError> {
+        let row_num = sqlx::query(
+            r#"
+        delete from chats where id = $1
+        "#,
+        )
+        .bind(chat_id as i64)
+        .execute(&self.pool)
+        .await?
+        .rows_affected();
+        Ok(row_num == 1)
     }
 }
 
