@@ -13,7 +13,6 @@ async fn main() -> Result<()> {
 
     let config = AppConfig::load().expect("Failed to load config");
     let app = get_router(config).await?;
-
     let listener = TcpListener::bind(&addr).await?;
     info!("Listening on: {}", addr);
 

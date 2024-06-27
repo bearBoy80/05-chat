@@ -43,7 +43,6 @@ pub async fn get_router(config: AppConfig) -> anyhow::Result<Router> {
         .layer(from_fn_with_state(state.clone(), verify_token::<AppState>))
         .route("/", get(index_handler))
         .with_state(state);
-
     Ok(app)
 }
 

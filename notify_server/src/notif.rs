@@ -14,6 +14,7 @@ pub enum AppEvent {
     AddToChat(Chat),
     RemoveFromChat(Chat),
     NewMessage(Message),
+    UpdateChatName(Chat),
 }
 
 #[derive(Debug)]
@@ -55,6 +56,7 @@ pub async fn setup_pg_listener(state: AppState) -> anyhow::Result<()> {
                     info!("Sending notification to user {}", user_id);
                     if let Err(e) = tx.send(notification.event.clone()) {
                         warn!("Failed to send notification to user {}: {}", user_id, e);
+                        //TODO: 增加判断rec channel是否关闭
                     }
                 }
             }
@@ -75,7 +77,15 @@ impl Notification {
                     get_affected_chat_user_ids(payload.old.as_ref(), payload.new.as_ref());
                 let event = match payload.op.as_str() {
                     "INSERT" => AppEvent::NewChat(payload.new.expect("new should exist")),
-                    "UPDATE" => AppEvent::AddToChat(payload.new.expect("new should exist")),
+                    "UPDATE" => {
+                        let old_chat = payload.old.unwrap();
+                        let new_chat = payload.new.unwrap();
+                        if old_chat.name != new_chat.name {
+                            AppEvent::UpdateChatName(new_chat)
+                        } else {
+                            AppEvent::AddToChat(new_chat)
+                        }
+                    }
                     "DELETE" => AppEvent::RemoveFromChat(payload.old.expect("old should exist")),
                     _ => return Err(anyhow::anyhow!("Invalid operation")),
                 };
@@ -86,7 +96,7 @@ impl Notification {
             }
             "chat_message_created" => {
                 let payload: ChatMessageCreated = serde_json::from_str(payload)?;
-                let user_ids = payload.members.iter().map(|v| *v as u64).collect();
+                let user_ids: HashSet<u64> = payload.members.iter().map(|v| *v as u64).collect();
                 Ok(Self {
                     user_ids,
                     event: Arc::new(AppEvent::NewMessage(payload.message)),
